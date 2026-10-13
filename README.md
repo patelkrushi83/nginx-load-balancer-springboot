@@ -1,134 +1,104 @@
-# NGINX Load Balancer with Spring Boot and Docker
+## LLM Integration with Ollama
 
-A hands-on system design project demonstrating reverse proxying, round-robin load balancing, horizontal scaling, and fault tolerance using NGINX, Spring Boot, and Docker Compose.
+This project integrates a locally hosted Large Language Model (LLM) using Ollama and Llama 3.2 (3B).
 
-## Technology Stack
-
-- Java 25
-- Spring Boot 4
-- NGINX
-- Docker
-- Docker Compose
-- Maven
-- REST API
-
-## Architecture
+### Updated Architecture
 
 ```text
-             Client
-                |
-         localhost:8080
-                |
-          NGINX Proxy
-                |
-         Load Balancer
-           /       \
-          /         \
-   Spring Boot   Spring Boot
-    Backend 1     Backend 2
-    Port 8081     Port 8082
+                  Client
+                     |
+                     v
+              NGINX (8080)
+                     |
+          +----------+----------+
+          |                     |
+          v                     v
+   Spring Boot 1          Spring Boot 2
+      (8081)                 (8082)
+          |                     |
+          +----------+----------+
+                     |
+                     v
+              Ollama Server
+             (Mac Host: 11434)
+                     |
+                     v
+               Llama 3.2 3B
 ```
 
-NGINX acts as a reverse proxy and distributes incoming HTTP requests between two Spring Boot application instances using round-robin load balancing.
+### Features
 
-## Features
-
-- RESTful API using Spring Boot
-- NGINX reverse proxy
-- Round-robin load balancing
-- Multiple backend instances
-- Docker containerization
-- Docker Compose orchestration
-- Basic fault tolerance and backend recovery
-
-## Running the Project
+- RESTful AI chat API using Spring Boot.
+- Integration with Llama 3.2 through Ollama.
+- NGINX round-robin load balancing across two backend instances.
+- Docker Compose orchestration.
+- Backend identification in API responses.
+- Backend fault-tolerance testing.
+- Structured application logging.
 
 ### Prerequisites
 
+- Java 25
+- Maven
 - Docker Desktop
-- Docker Compose
+- Ollama
+- Llama 3.2 (3B)
 
-### Start the application
+### Running the Application
+
+Start Ollama on your Mac and download the model if it is not already installed:
+
+```bash
+ollama pull llama3.2:3b
+```
+
+Ensure the Ollama server is running on port `11434`.
+
+Start the Docker containers:
 
 ```bash
 docker compose up --build -d
 ```
 
-### Verify containers
+### Test the AI Chat API
 
 ```bash
-docker compose ps
+curl -X POST http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Explain NGINX load balancing."}'
 ```
 
-### Test load balancing
+Example response:
 
-```bash
-for i in {1..10}; do
-    curl -s http://localhost:8080/hello
-    echo
-done
+```json
+{
+  "response": "NGINX distributes incoming traffic across multiple backend servers.",
+  "backend": "8081"
+}
 ```
 
-Example output:
+### Test Load Balancing
 
-```text
-Hello from Spring Boot on port 8081
-Hello from Spring Boot on port 8082
-Hello from Spring Boot on port 8081
-Hello from Spring Boot on port 8082
-```
+Send repeated requests to `/api/chat` and inspect the `backend` field to verify that requests reach both Spring Boot instances.
 
-## Fault Tolerance Testing
+### Test Fault Tolerance
 
-Stop the first backend:
+Stop one backend:
 
 ```bash
 docker compose stop backend1
 ```
 
-Send requests again:
+Verify that AI requests continue through the remaining backend.
 
-```bash
-curl http://localhost:8080/hello
-```
-
-After NGINX detects the unavailable backend, requests should continue being served by backend2.
-
-Restart the backend:
+Restore the stopped backend:
 
 ```bash
 docker compose start backend1
 ```
 
-NGINX can subsequently route requests to both instances again.
+### Architecture Limitations
 
-## Key Concepts Demonstrated
+Both Spring Boot instances share a single Ollama server running on the host machine. This provides backend redundancy but not LLM inference redundancy.
 
-**Reverse Proxy:** NGINX provides a single entry point and forwards HTTP requests to backend services.
-
-**Load Balancing:** Requests are distributed across backend instances using round robin.
-
-**Horizontal Scaling:** Multiple instances of the same application handle incoming traffic.
-
-**Fault Tolerance:** An available backend can continue serving traffic when another instance fails.
-
-**Container Networking:** Docker Compose enables service-to-service communication using internal DNS.
-
-## Stop the Application
-
-```bash
-docker compose down
-```
-
-## Future Improvements
-
-- NGINX rate limiting
-- Redis caching
-- Prometheus and Grafana monitoring
-- HTTPS and TLS termination
-- Kubernetes deployment
-- Automated CI/CD pipelines
-
-## Purpose
-
-This project was developed to gain practical experience with backend infrastructure and distributed system design concepts relevant to software engineering interviews.
+Future improvements include asynchronous inference, rate limiting, model observability, request authentication, and multiple inference servers.
