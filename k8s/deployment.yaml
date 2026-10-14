@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-demo-backend
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: nginx-demo-backend
+  template:
+    metadata:
+      labels:
+        app: nginx-demo-backend
+    spec:
+      containers:
+        - name: springboot
+          image: nginx-demo-backend:v2
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: OLLAMA_BASE_URL
+              value: "http://host.docker.internal:11434"
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
